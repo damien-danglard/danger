@@ -90,8 +90,6 @@ module Danger
         RequestSources::GitLab
       elsif repo_url =~ /bitbucket\.(org|com)/i
         RequestSources::BitbucketCloud
-      elsif repo_url =~ /dev\.azure\.com/i
-        RequestSources::VSTS
       end
     end
 

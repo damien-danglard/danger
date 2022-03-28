@@ -94,7 +94,7 @@ module Danger
           },
           "status" => 1,
           "threadContext" => {
-            "filePath" => file,
+            "filePath" => file.start_with? "/" ? file : "/#{file}",
             "rightFileEnd" => {
               "line" => line + 1,
               "offset" => 1

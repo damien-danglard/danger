@@ -140,7 +140,8 @@ module Danger
       end
 
       # Sending data to GitHub
-      def update_pull_request!(warnings: [], errors: [], messages: [], markdowns: [], danger_id: "danger", new_comment: false, remove_previous_comments: false)
+      def update_pull_request!(warnings: [], errors: [], messages: [], markdowns: [],
+                               danger_id: "danger", new_comment: false, remove_previous_comments: false)
         comment_result = {}
         editable_comments = issue_comments.select { |comment| comment.generated_by_danger?(danger_id) }
         last_comment = editable_comments.last
@@ -252,7 +253,8 @@ module Danger
         end
       end
 
-      def submit_inline_comments!(warnings: [], errors: [], messages: [], markdowns: [], previous_violations: [], danger_id: "danger")
+      def submit_inline_comments!(warnings: [], errors: [], messages: [], markdowns: [],
+                                  previous_violations: [], danger_id: "danger")
         # Avoid doing any fetchs if there's no inline comments
         return {} if (warnings + errors + messages + markdowns).select(&:inline?).empty?
 

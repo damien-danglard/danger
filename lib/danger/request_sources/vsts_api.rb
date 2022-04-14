@@ -78,6 +78,7 @@ module Danger
 
       def post_inline_comment(text, file, line)
         uri = URI("#{pr_api_endpoint}/threads?api-version=#{@api_version}")
+        file_path = file.start_with?("/") ? file : "/#{file}"
         body = {
           "comments" => [
             {
@@ -94,7 +95,7 @@ module Danger
           },
           "status" => 1,
           "threadContext" => {
-            "filePath" => file.start_with? "/" ? file : "/#{file}",
+            "filePath" => file_path,
             "rightFileEnd" => {
               "line" => line + 1,
               "offset" => 1
@@ -116,6 +117,14 @@ module Danger
         patch(uri, body)
       end
 
+      def update_status(thread, status)
+        uri = URI("#{pr_api_endpoint}/threads/#{thread}?api-version=#{@api_version}")
+        body = {
+          "status" => status
+        }.to_json
+        patch(uri, body)
+      end
+
       private
 
       def use_ssl
@@ -123,6 +132,8 @@ module Danger
       end
 
       def fetch_json(uri)
+        puts "GET #{uri}"
+
         req = Net::HTTP::Get.new(uri.request_uri, { "Content-Type" => "application/json", "Authorization" => "Basic #{@token}" })
         res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: use_ssl) do |http|
           http.request(req)
@@ -131,6 +142,9 @@ module Danger
       end
 
       def post(uri, body)
+        puts "POST #{uri}"
+        puts body
+
         req = Net::HTTP::Post.new(uri.request_uri, { "Content-Type" => "application/json", "Authorization" => "Basic #{@token}" })
         req.body = body
 
@@ -147,7 +161,7 @@ module Danger
       end
 
       def patch(uri, body)
-        puts uri
+        puts "PATCH #{uri}"
         puts body
 
         req = Net::HTTP::Patch.new(uri.request_uri, { "Content-Type" => "application/json", "Authorization" => "Basic #{@token}" })

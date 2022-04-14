@@ -2,6 +2,7 @@
 
 require "danger/helpers/comments_helper"
 require "danger/request_sources/vsts_api"
+require "danger/helpers/markdown_comments_parsing_helper"
 
 module Danger
   module RequestSources
@@ -75,7 +76,8 @@ module Danger
         nil
       end
 
-      def update_pull_request!(warnings: [], errors: [], messages: [], markdowns: [], danger_id: "danger", new_comment: false, remove_previous_comments: false)
+      def update_pull_request!(warnings: [], errors: [], messages: [], markdowns: [], danger_id: "danger",
+                               new_comment: false, remove_previous_comments: false)
         unless @api.supports_comments?
           return
         end
@@ -149,7 +151,7 @@ module Danger
           comment = thread[:comments].first
           comment_content = comment[:content].nil? ? "" : comment[:content]
 
-          next comment_content.include?("generated_by_#{danger_id}")
+          next comment_content.include?("generated_by_#{danger_id}") && !thread[:threadContext].nil?
         end
         non_danger_threads = pr_threads - danger_threads
 
@@ -161,10 +163,15 @@ module Danger
         # submit removes from the array all comments that are still in force
         # so we strike out all remaining ones
         danger_threads.each do |thread|
-          violation = violations_from_table(thread[:comments].first[:content]).first
+          comment_parsing_helper = Class.new.extend(Danger::Helpers::MarkdownCommentsParsingHelper)
+          table = comment_parsing_helper.parse_tables_from_comment(thread[:comments].first[:content]).first
+          violation = table.nil? ? nil : comment_parsing_helper.violations_from_table(table).flatten.first
           if !violation.nil? && violation.sticky
-            body = generate_inline_comment_body("white_check_mark", violation, danger_id: danger_id, resolved: true, template: "github")
+            body = generate_inline_comment_body("white_check_mark", violation, danger_id: danger_id, resolved: true, template: "vsts")
             @api.update_comment(thread[:id], thread[:comments].first[:id], body)
+
+            status_to_resolve = ["active", "pending", "unknown", "wontFix"]
+            @api.update_status(thread[:id], "fixed") if status_to_resolve.include?(thread[:status])
           end
         end
 
@@ -205,7 +212,8 @@ module Danger
 
           matching_threads = danger_threads.select do |comment_data|
             if comment_data.key?(:threadContext) && !comment_data[:threadContext].nil? &&
-              comment_data[:threadContext][:filePath] == m.file &&
+              (comment_data[:threadContext][:filePath] == m.file ||
+                comment_data[:threadContext][:filePath] == "/#{m.file}") &&
               comment_data[:threadContext].key?(:rightFileStart) &&
               comment_data[:threadContext][:rightFileStart][:line] == m.line
               # Parse it to avoid problems with strikethrough
